@@ -1,7 +1,18 @@
-from dotenv import load_dotenv
-import os
+from pydantic_settings import BaseSettings
 
-load_dotenv()
 
-DATABASE_URL_ASYNC = os.getenv("DATABASE_URL_ASYNC")
-DATABASE_URL_SYNC = os.getenv("DATABASE_URL_SYNC")
+class Settings(BaseSettings):
+    DATABASE_URL_ASYNC: str
+    DATABASE_URL_SYNC: str
+
+    SECRET_KEY: str
+    ALGORITHM: str = "HS256"
+
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    class Config:
+        env_file = ".env"
+
+
+settings = Settings()
