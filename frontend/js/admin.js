@@ -7,6 +7,24 @@ function requireAuth() {
 
 requireAuth();
 
+function requireAdmin() {
+    const token = sessionStorage.getItem("access_token");
+
+    if (!token) {
+        window.location.href = "login.html";
+        return;
+    }
+
+    const payload = JSON.parse(atob(token.split('.')[1]));
+
+    if (payload.role !== "admin") {
+        alert("Access denied");
+        window.location.href = "index.html";
+    }
+}
+
+requireAdmin();
+
 /* ---------------- PRODUCT CREATION ---------------- */
 
 document.getElementById("productForm")?.addEventListener("submit", async (e) => {
@@ -20,7 +38,6 @@ document.getElementById("productForm")?.addEventListener("submit", async (e) => 
             rating: parseFloat(document.getElementById("rating").value) || 0,
             variants: [
                 {
-                    id: 0,
                     sku: document.getElementById("sku").value,
                     attributes: {
                         additionalProp1: document.getElementById("attr1").value,
@@ -166,25 +183,6 @@ async function saveProduct(id, row) {
         alert("Update failed");
     }
 }
-
-async function updateProduct(id) {
-    const name = document.getElementById(`name-${id}`).value;
-    const price = document.getElementById(`price-${id}`).value;
-
-    try {
-        await apiRequest(`/admin/products/${id}`, "PUT", {
-            name,
-            price
-        });
-
-        alert("Product updated");
-        loadProducts();
-    } catch (err) {
-        console.error(err);
-        alert("Update failed");
-    }
-}
-
 
 async function deleteProduct(id) {
     if (!confirm("Delete this product?")) return;
