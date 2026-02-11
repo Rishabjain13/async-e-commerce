@@ -137,7 +137,7 @@ async def delete_product(product_id: int, db: AsyncSession = Depends(get_db)):
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    await db.delete(product)
+    product.is_deleted = True
     await db.commit()
 
     return {"message": "Product deleted"}
@@ -208,3 +208,4 @@ async def update_product(
             db.add(review)
 
     return {"message": "Product fully updated"}
+
