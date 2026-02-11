@@ -6,6 +6,7 @@ from app.database.session import get_db
 from app.models.order import Order
 from app.models.product import Product
 from app.models.price import Price
+from app.models.review import Review
 from app.models.product_variant import ProductVariant
 from app.models.inventory import Inventory
 from app.schemas.product_transaction import ProductTransactionSchema
@@ -81,7 +82,6 @@ async def create_product(
         product = Product(
             name=data.name,
             description=data.description,
-            rating=data.rating,
             is_deleted=False
         )
 
@@ -114,6 +114,16 @@ async def create_product(
 
             db.add(inventory)
 
+        # 4️⃣ CREATE REVIEW FOR RATING
+        if hasattr(data, "rating") and data.rating is not None:
+
+            review = Review(
+                product_id=product.id,
+                rating=data.rating
+            )
+
+            db.add(review)
+
     return {
         "message": "Product created successfully",
         "product_id": product.id
@@ -132,28 +142,69 @@ async def delete_product(product_id: int, db: AsyncSession = Depends(get_db)):
 
     return {"message": "Product deleted"}
 
-
 @router.put("/products/{product_id}")
-async def update_product(product_id: int, data: dict, db: AsyncSession = Depends(get_db)):
-    product = await db.get(Product, product_id)
+async def update_product(
+    product_id: int,
+    data: ProductTransactionSchema,
+    db: AsyncSession = Depends(get_db)
+):
 
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
+    async with db.begin():
 
-    # Update product name
-    if "name" in data:
-        product.name = data["name"]
+        # 1️⃣ Fetch Product
+        product = await db.get(Product, product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
 
-    # Update price
-    if "price" in data:
+        product.name = data.name
+        product.description = data.description
+
+        # 2️⃣ Update Price
         result = await db.execute(
             select(Price).where(Price.product_id == product_id)
         )
         price_obj = result.scalar_one_or_none()
-
         if price_obj:
-            price_obj.amount = float(data["price"])
+            price_obj.amount = data.price
 
-    await db.commit()
+        # 3️⃣ Update Variant (Assuming single variant)
+        result = await db.execute(
+            select(ProductVariant).where(
+                ProductVariant.product_id == product_id
+            )
+        )
+        variant = result.scalar_one_or_none()
 
-    return {"message": "Product updated"}
+        if variant:
+            variant.sku = data.variants[0].sku
+            variant.attributes = data.variants[0].attributes
+
+            # Update Inventory
+            result = await db.execute(
+                select(Inventory).where(
+                    Inventory.variant_id == variant.id
+                )
+            )
+            inventory = result.scalar_one_or_none()
+
+            if inventory:
+                inventory.quantity = data.variants[0].quantity
+
+        # 4️⃣ Update Review (rating)
+        from app.models.review import Review
+
+        result = await db.execute(
+            select(Review).where(Review.product_id == product_id)
+        )
+        review = result.scalar_one_or_none()
+
+        if review:
+            review.rating = data.rating
+        else:
+            review = Review(
+                product_id=product_id,
+                rating=data.rating
+            )
+            db.add(review)
+
+    return {"message": "Product fully updated"}
