@@ -6,6 +6,9 @@ from app.database.session import get_db
 from app.models.order import Order
 from app.models.product import Product
 from app.models.price import Price
+from app.models.product_variant import ProductVariant
+from app.models.inventory import Inventory
+from app.schemas.product_transaction import ProductTransactionSchema
 from app.deps import get_admin_user
 
 router = APIRouter(prefix="/admin", tags=["Admin"],
@@ -65,6 +68,57 @@ async def update_order_status(order_id: int, data: dict, db: AsyncSession = Depe
     await db.commit()
 
     return {"message": "Status updated"}
+
+@router.post("/products")
+async def create_product(
+    data: ProductTransactionSchema,
+    db: AsyncSession = Depends(get_db)
+):
+
+    async with db.begin():
+
+        # 1️⃣ Create Product
+        product = Product(
+            name=data.name,
+            description=data.description,
+            rating=data.rating,
+            is_deleted=False
+        )
+
+        db.add(product)
+        await db.flush()
+
+        # 2️⃣ Create Price
+        price = Price(
+            product_id=product.id,
+            amount=data.price
+        )
+        db.add(price)
+
+        # 3️⃣ Create Variants
+        for variant_data in data.variants:
+
+            variant = ProductVariant(
+                product_id=product.id,
+                sku=variant_data.sku,
+                attributes=variant_data.attributes
+            )
+
+            db.add(variant)
+            await db.flush()
+
+            inventory = Inventory(
+                variant_id=variant.id,
+                quantity=variant_data.quantity
+            )
+
+            db.add(inventory)
+
+    return {
+        "message": "Product created successfully",
+        "product_id": product.id
+    }
+
 
 @router.delete("/products/{product_id}")
 async def delete_product(product_id: int, db: AsyncSession = Depends(get_db)):
