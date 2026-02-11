@@ -6,8 +6,10 @@ from app.database.session import get_db
 from app.models.order import Order
 from app.models.product import Product
 from app.models.price import Price
+from app.deps import get_admin_user
 
-router = APIRouter(prefix="/admin", tags=["Admin"])
+router = APIRouter(prefix="/admin", tags=["Admin"],
+                   dependencies=[Depends(get_admin_user)])
 
 
 @router.get("/orders")
@@ -25,7 +27,9 @@ async def get_all_orders(db: AsyncSession = Depends(get_db)):
     ]
 
 @router.get("/stats")
-async def get_admin_stats(db: AsyncSession = Depends(get_db)):
+async def get_admin_stats(
+    db: AsyncSession = Depends(get_db),
+    admin = Depends(get_admin_user)):
 
     # Count only active products
     product_result = await db.execute(
