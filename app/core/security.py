@@ -1,43 +1,38 @@
-import os
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 from passlib.context import CryptContext
-from dotenv import load_dotenv
+import hashlib
+from app.core.config import settings
 
-load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
-
-ACCESS_TOKEN_EXPIRE_MINUTES = int(
-    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30)
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__rounds=12
 )
 
-REFRESH_TOKEN_EXPIRE_DAYS = int(
-    os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7)
-)
 
-if not SECRET_KEY:
-    raise RuntimeError("SECRET_KEY is not set in environment variables")
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
+# ---------------- PASSWORD ---------------- #
 
 def _normalize_password(password: str) -> str:
-    """
-    Bcrypt only supports 72 bytes.
-    We safely truncate the password to avoid runtime errors.
-    """
     return password[:72]
 
 
 def hash_password(password: str) -> str:
-    password = _normalize_password(password)
-    return pwd_context.hash(password)
+    return pwd_context.hash(_normalize_password(password))
+
 
 def verify_password(plain: str, hashed: str) -> bool:
-    plain = _normalize_password(plain)
-    return pwd_context.verify(plain, hashed)
+    return pwd_context.verify(_normalize_password(plain), hashed)
+
+
+# ---------------- TOKEN HASHING ---------------- #
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+# ---------------- ACCESS TOKEN ---------------- #
 
 def create_access_token(user_id: int, role: str) -> str:
     payload = {
@@ -45,10 +40,12 @@ def create_access_token(user_id: int, role: str) -> str:
         "role": role,
         "type": "access",
         "exp": datetime.now(timezone.utc)
-        + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     }
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
+
+# ---------------- REFRESH TOKEN ---------------- #
 
 def create_refresh_token(user_id: int, role: str) -> str:
     payload = {
@@ -56,13 +53,19 @@ def create_refresh_token(user_id: int, role: str) -> str:
         "role": role,
         "type": "refresh",
         "exp": datetime.now(timezone.utc)
-        + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     }
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
+
+# ---------------- DECODE ---------------- #
 
 def decode_token(token: str):
     try:
-        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
     except JWTError:
         return None
