@@ -44,8 +44,7 @@ document.getElementById("productForm")?.addEventListener("submit", async (e) => 
                         additionalProp2: document.getElementById("attr2").value,
                         additionalProp3: document.getElementById("attr3").value
                     },
-                    quantity: parseInt(document.getElementById("quantity").value),
-                    in_stock: true
+                    quantity: parseInt(document.getElementById("quantity").value)
                 }
             ]
         };
