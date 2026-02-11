@@ -9,7 +9,6 @@ async function loadProducts() {
         allProducts = products;
 
         renderProducts();
-        loadCartCount();
     } catch (err) {
         console.error("Failed to load products:", err);
     }
@@ -88,7 +87,6 @@ async function addToCart(variantId) {
         });
 
         alert("Added to cart");
-        loadCartCount();
     } catch (err) {
         console.error(err);
         alert("Failed to add to cart");
