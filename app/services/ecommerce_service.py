@@ -1,4 +1,6 @@
 import asyncio
+from statistics import mean
+
 from app.controllers.product_controller import fetch_product
 from app.controllers.pricing_controller import fetch_price
 from app.controllers.review_controller import fetch_reviews
@@ -15,7 +17,7 @@ async def safe_call(coro, timeout=2):
 
 
 async def get_product_aggregate(product_id: int):
-    product, price, review, variants = await asyncio.gather(
+    product, price, reviews, variants = await asyncio.gather(
         safe_call(fetch_product(product_id)),
         safe_call(fetch_price(product_id)),
         safe_call(fetch_reviews(product_id)),
@@ -40,7 +42,16 @@ async def get_product_aggregate(product_id: int):
             "in_stock": qty > 0
         })
 
-    rating = review.rating if review else None
+        rating = 0.0
+
+        if reviews:
+            if isinstance(reviews, list) and len(reviews) > 0:
+                ratings = [r.rating for r in reviews if hasattr(r, "rating")]
+                if ratings:
+                    rating = round(mean(ratings), 1)
+
+            elif hasattr(reviews, "rating"):
+                rating = float(reviews.rating)
 
     return {
         "product": {
