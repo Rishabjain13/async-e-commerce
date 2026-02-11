@@ -64,18 +64,25 @@ function logout(e) {
 
 function updateNavbar() {
     const token = sessionStorage.getItem("access_token");
-    const loginLink = document.querySelector('a[href="login.html"]');
+    const loginLink = document.getElementById("loginLink");
+    const adminLink = document.querySelector('a[href="admin.html"]');
 
-    if (!loginLink) return;
+    if (!token) return;
 
-    if (token) {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const role = payload.role;
+
+    // Change Login to Logout
+    if (loginLink) {
         loginLink.textContent = "Logout";
-        loginLink.href = "#";
         loginLink.onclick = logout;
-    } else {
-        loginLink.textContent = "Login";
-        loginLink.href = "login.html";
+    }
+
+    // Hide admin link if not admin
+    if (adminLink && role !== "admin") {
+        adminLink.style.display = "none";
     }
 }
+
 
 document.addEventListener("DOMContentLoaded", updateNavbar);
