@@ -1,16 +1,19 @@
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import create_engine
-from app.core.config import DATABASE_URL_ASYNC, DATABASE_URL_SYNC
+from app.core.config import settings
 
+# Async engine (used by FastAPI app)
 async_engine = create_async_engine(
-    DATABASE_URL_ASYNC,
-    pool_size=10,
-    max_overflow=20,
-    pool_timeout=30,
-    echo=False
+    settings.DATABASE_URL_ASYNC,
+    echo=False,
+    future=True,
+    pool_pre_ping=True
 )
 
+# Sync engine (used by Alembic if needed)
 sync_engine = create_engine(
-    DATABASE_URL_SYNC,
+    settings.DATABASE_URL_SYNC,
+    echo=False,
+    future=True,
     pool_pre_ping=True
 )
