@@ -1,88 +1,98 @@
-async function login(e) {
-    e.preventDefault();
+let currentPage = 1;
+const limit = 8;
+let allProducts = [];
+let currentSearch = "";
 
-    const emailEl = document.getElementById("emailInput");
-    const passwordEl = document.getElementById("passwordInput");
-
-    if (!emailEl || !passwordEl) {
-        alert("Login form not found");
-        return;
-    }
-
-    const email = emailEl.value.trim();
-    const password = passwordEl.value.trim();
-
+async function loadProducts() {
     try {
-        const res = await apiRequest("/auth/login", "POST", {
-            email,
-            password
+        const products = await apiRequest("/products");
+        allProducts = products;
+
+        renderProducts();
+        loadCartCount();
+    } catch (err) {
+        console.error("Failed to load products:", err);
+    }
+}
+
+function renderProducts() {
+    const container = document.getElementById("products");
+    container.innerHTML = "";
+
+    const filtered = allProducts.filter(p =>
+        p.product?.name
+            ?.toLowerCase()
+            .includes(currentSearch.toLowerCase())
+    );
+
+    filtered.forEach(p => {
+        const name = p.product?.name || "Unnamed product";
+        const description = p.product?.description || "No description";
+        const price = p.price ?? 0;
+        const rating = p.rating ?? 0;
+
+        const variant = p.variants?.[0];
+        const variantId = variant?.id || null;
+
+        const div = document.createElement("div");
+        div.className = "product";
+        div.innerHTML = `
+            <h3>${name}</h3>
+            <p>${description}</p>
+            <p class="price">₹${price}</p>
+            <p class="rating">⭐ ${rating}</p>
+            <button onclick="addToCart(${variantId})"
+                ${!variantId ? "disabled" : ""}>
+                Add to Cart
+            </button>
+        `;
+        container.appendChild(div);
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = "<p>No products found</p>";
+    }
+}
+
+function searchProducts() {
+    const input = document.getElementById("searchInput");
+    currentSearch = input.value.trim();
+    renderProducts();
+}
+
+function nextPage() {
+    currentPage++;
+    loadProducts();
+}
+
+function prevPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        loadProducts();
+    }
+}
+
+async function addToCart(variantId) {
+    try {
+        const token = sessionStorage.getItem("access_token");
+
+        if (!token) {
+            alert("Please login first");
+            window.location.href = "login.html";
+            return;
+        }
+
+        await apiRequest("/cart/items", "POST", {
+            variant_id: variantId,
+            quantity: 1
         });
 
-        // Store token in sessionStorage
-        sessionStorage.setItem("access_token", res.access_token);
-
-        // Redirect to home
-        window.location.href = "index.html";
+        alert("Added to cart");
+        loadCartCount();
     } catch (err) {
         console.error(err);
-        alert("Login failed");
+        alert("Failed to add to cart");
     }
 }
 
-async function register(e) {
-    e.preventDefault();
-
-    const emailEl = document.getElementById("emailInput");
-    const passwordEl = document.getElementById("passwordInput");
-
-    if (!emailEl || !passwordEl) {
-        alert("Registration form not found");
-        return;
-    }
-
-    const email = emailEl.value.trim();
-    const password = passwordEl.value.trim();
-
-    try {
-        await apiRequest("/auth/register", "POST", {
-            email,
-            password
-        });
-
-        alert("Registration successful");
-        window.location.href = "login.html";
-    } catch (err) {
-        console.error(err);
-        alert("Registration failed");
-    }
-}
-function logout(e) {
-    if (e) e.preventDefault();
-    sessionStorage.removeItem("access_token");
-    window.location.href = "login.html";
-}
-
-function updateNavbar() {
-    const token = sessionStorage.getItem("access_token");
-    const loginLink = document.getElementById("loginLink");
-    const adminLink = document.querySelector('a[href="admin.html"]');
-
-    if (!token) return;
-
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    const role = payload.role;
-
-    // Change Login to Logout
-    if (loginLink) {
-        loginLink.textContent = "Logout";
-        loginLink.onclick = logout;
-    }
-
-    // Hide admin link if not admin
-    if (adminLink && role !== "admin") {
-        adminLink.style.display = "none";
-    }
-}
-
-
-document.addEventListener("DOMContentLoaded", updateNavbar);
+loadProducts();
