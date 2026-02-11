@@ -2,11 +2,9 @@ from pydantic import BaseModel
 from typing import List, Dict, Optional
 
 class VariantSchema(BaseModel):
-    id: int
     sku: str
-    attributes: dict
+    attributes: dict[str,str]
     quantity: int
-    in_stock: bool
 
 class ProductTransactionSchema(BaseModel):
     name: str
