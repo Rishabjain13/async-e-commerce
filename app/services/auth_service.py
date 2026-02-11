@@ -76,44 +76,52 @@ class AuthService:
 
     # ---------------- REFRESH ---------------- #
 
-    async def refresh(self, refresh_token: str):
+async def refresh(self, refresh_token: str):
 
-        hashed = hash_token(refresh_token)
+    hashed = hash_token(refresh_token)
 
-        result = await self.db.execute(
-            select(RefreshToken).where(
-                RefreshToken.token_hash == hashed,
-                RefreshToken.is_revoked == False,
-            )
+    result = await self.db.execute(
+        select(RefreshToken).where(
+            RefreshToken.token_hash == hashed,
+            RefreshToken.is_revoked == False,
         )
+    )
 
-        token_entry = result.scalar_one_or_none()
+    token_entry = result.scalar_one_or_none()
 
-        if not token_entry:
-            raise HTTPException(401, "Invalid refresh token")
+    if not token_entry:
+        raise HTTPException(401, "Invalid refresh token")
 
-        # 🔁 Rotate token (revoke old one)
-        token_entry.is_revoked = True
+    # ✅ CHECK EXPIRY
+    if token_entry.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(401, "Refresh token expired")
 
-        # Generate new tokens
-        new_access = create_access_token(token_entry.user_id, "user")
-        new_refresh = create_refresh_token(token_entry.user_id, "user")
+    # ✅ FETCH USER ROLE (NO HARDCODE)
+    user = await self.db.get(User, token_entry.user_id)
+    if not user:
+        raise HTTPException(404, "User not found")
 
-        new_entry = RefreshToken(
-            user_id=token_entry.user_id,
-            token_hash=hash_token(new_refresh),
-            expires_at=datetime.now(timezone.utc)
-            + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
-            is_revoked=False,
-        )
+    # Rotate token
+    token_entry.is_revoked = True
 
-        self.db.add(new_entry)
-        await self.db.commit()
+    new_access = create_access_token(user.id, user.role)
+    new_refresh = create_refresh_token(user.id, user.role)
 
-        return {
-            "access_token": new_access,
-            "refresh_token": new_refresh,
-        }
+    new_entry = RefreshToken(
+        user_id=user.id,
+        token_hash=hash_token(new_refresh),
+        expires_at=datetime.now(timezone.utc)
+        + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        is_revoked=False,
+    )
+
+    self.db.add(new_entry)
+    await self.db.commit()
+
+    return {
+        "access_token": new_access,
+        "refresh_token": new_refresh,
+    }
 
     # ---------------- LOGOUT ---------------- #
 
