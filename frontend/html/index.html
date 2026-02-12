@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShopEase</title>
+    <link rel="stylesheet" href="../css/style.css?v=1">
+</head>
+<body>
+
+<div class="navbar">
+    <div class="logo">Shop<span>Ease</span></div>
+    <button class="menu-btn">☰</button>
+    <div class="nav-links">
+        <a href="cart.html">Cart</a>
+        <a href="orders.html">Orders</a>
+        <a href="admin.html">Admin</a>
+        <a href="login.html">Logout</a>
+    </div>
+</div>
+
+<div class="hero">
+    <div>
+        <h1>Discover Great Deals</h1>
+        <p>Shop electronics, fashion, and more</p>
+    </div>
+</div>
+
+<div class="container">
+
+    <div class="filter-bar">
+        <input id="searchInput" placeholder="Search products">
+        <button onclick="loadProducts()">Search</button>
+    </div>
+
+
+    <div id="products" class="grid"></div>
+
+    <div class="pagination">
+        <button onclick="prevPage()">Prev</button>
+        <span id="pageInfo"></span>
+        <button onclick="nextPage()">Next</button>
+    </div>
+</div>
+
+<div class="footer">
+    © 2026 ShopEase. All rights reserved.
+</div>
+
+<script src="../js/auth.js"></script>
+<script src="../js/api.js?v=1"></script>
+<script src="../js/product.js?v=1"></script>
+</body>
+</html>
